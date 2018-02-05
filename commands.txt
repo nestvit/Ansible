@@ -1,0 +1,4 @@
+
+ ansible routers -i hosts.txt -m raw -a "sh run" -u cisco --ask-pass
+
+
