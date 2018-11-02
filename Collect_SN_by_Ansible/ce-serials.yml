@@ -1,0 +1,34 @@
+- name: get serial numbers of access switches
+  hosts: all
+  connection: network_cli
+  vars:
+          ansible_network_os: ios
+          ansible_password: "{{ ssh_pass }}"
+  tasks:
+          - name: run display elabel on device
+            cli_command:
+                    command: "{{ item }}"
+                    prompt:
+                            - "Continue"
+                    answer: 'y'
+            loop:
+                    - "screen-length 0 temporary"
+                    - display device elabel
+            register: disp
+
+          - name: set facts
+            set_fact:
+                parts_list: "{{ disp.results[1].stdout | replace('\n', ' ') |
+                          regex_findall('\\[Board Properties\\] BoardType=.*? BarCode=.*? .*? Description=.*? Manufactured') |
+                          map('regex_replace', '\\[Board Properties\\] BoardType=(.*?) BarCode=(.*?) .*? Description=(.*?) Manufactured', '\\1;\\2;\\3') |
+                          select('match', '.+;.+;.+') | list }}"
+
+          - name: show resuls
+            debug:
+                msg: "{{ inventory_hostname }};{{ item }}"
+            loop: "{{ parts_list }}"
+
+          - name: write file
+            shell: echo "{{ inventory_hostname }};{{ item }}" >>ver1.csr
+            delegate_to: localhost
+            loop: "{{ parts_list }}"
